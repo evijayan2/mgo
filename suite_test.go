@@ -38,9 +38,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evijayan2/mgo"
+	"github.com/evijayan2/mgo/bson"
 	. "gopkg.in/check.v1"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var fast = flag.Bool("fast", false, "Skip slow tests")

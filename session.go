@@ -41,7 +41,7 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/mgo.v2/bson"
+	"github.com/evijayan2/mgo/bson"
 )
 
 type Mode int
@@ -279,6 +279,9 @@ func ParseURL(url string) (*DialInfo, error) {
 	source := ""
 	setName := ""
 	poolLimit := 0
+	socketTimeoutMS := 0
+	connectTimeoutMS := 0
+	maxIdleTimeMS := 0
 	for k, v := range uinfo.options {
 		switch k {
 		case "authSource":
@@ -294,6 +297,21 @@ func ParseURL(url string) (*DialInfo, error) {
 			if err != nil {
 				return nil, errors.New("bad value for maxPoolSize: " + v)
 			}
+		case "connectTimeoutMS":
+			connectTimeoutMS, err = strconv.Atoi(v)
+			if err != nil {
+				return nil, errors.New("bad value for connectTimeoutMS: " + v)
+			}
+		case "socketTimeoutMS":
+			socketTimeoutMS, err = strconv.Atoi(v)
+			if err != nil {
+				return nil, errors.New("bad value for socketTimeoutMS: " + v)
+			}
+		case "maxIdleTimeMS":
+			maxIdleTimeMS, err = strconv.Atoi(v)
+			if err != nil {
+				return nil, errors.New("bad value for maxIdleTimeMS: " + v)
+			}
 		case "connect":
 			if v == "direct" {
 				direct = true
@@ -302,22 +320,25 @@ func ParseURL(url string) (*DialInfo, error) {
 			if v == "replicaSet" {
 				break
 			}
-			fallthrough
-		default:
-			return nil, errors.New("unsupported connection URL option: " + k + "=" + v)
+			// 	fallthrough
+			// default:
+			// 	return nil, errors.New("unsupported connection URL option: " + k + "=" + v)
 		}
 	}
 	info := DialInfo{
-		Addrs:          uinfo.addrs,
-		Direct:         direct,
-		Database:       uinfo.db,
-		Username:       uinfo.user,
-		Password:       uinfo.pass,
-		Mechanism:      mechanism,
-		Service:        service,
-		Source:         source,
-		PoolLimit:      poolLimit,
-		ReplicaSetName: setName,
+		Addrs:            uinfo.addrs,
+		Direct:           direct,
+		Database:         uinfo.db,
+		Username:         uinfo.user,
+		Password:         uinfo.pass,
+		Mechanism:        mechanism,
+		Service:          service,
+		Source:           source,
+		PoolLimit:        poolLimit,
+		ReplicaSetName:   setName,
+		ConnectTimeoutMS: connectTimeoutMS,
+		SocketTimeoutMS:  socketTimeoutMS,
+		MaxIdleTimeMS:    maxIdleTimeMS,
 	}
 	return &info, nil
 }
@@ -338,6 +359,10 @@ type DialInfo struct {
 	// timeout is zero, the call may block forever waiting for a connection
 	// to be established. Timeout does not affect logic in DialServer.
 	Timeout time.Duration
+
+	ConnectTimeoutMS int
+	MaxIdleTimeMS    int
+	SocketTimeoutMS  int
 
 	// FailFast will cause connection and query attempts to fail faster when
 	// the server is unavailable, instead of retrying until the configured
@@ -451,6 +476,15 @@ func DialWithInfo(info *DialInfo) (*Session, error) {
 		}
 		session.creds = []Credential{*session.dialCred}
 	}
+
+	if info.SocketTimeoutMS > 0 {
+		session.sockTimeout = time.Duration(time.Duration(info.SocketTimeoutMS).Milliseconds())
+	}
+
+	if info.ConnectTimeoutMS > 0 {
+		session.syncTimeout = time.Duration(time.Duration(info.ConnectTimeoutMS).Milliseconds())
+	}
+
 	if info.PoolLimit > 0 {
 		session.poolLimit = info.PoolLimit
 	}

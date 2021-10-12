@@ -6,7 +6,7 @@ import (
 	"sort"
 	"sync/atomic"
 
-	"gopkg.in/mgo.v2/bson"
+	"github.com/evijayan2/mgo/bson"
 )
 
 var (
